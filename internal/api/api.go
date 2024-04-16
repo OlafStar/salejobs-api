@@ -22,7 +22,7 @@ func (s *APIServer) Run() {
 	mux := http.NewServeMux()
 	s.SetupUserAPI(mux)
 	s.SetupAdvertismentAPI(mux)
-	
+	SetupStripeRoutes(mux)
 
 	fmt.Printf("Server listening on http://localhost%s\n", s.listenAddr)
 

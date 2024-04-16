@@ -33,3 +33,8 @@ func (s *APIServer) SetupUserAPI(mux *http.ServeMux) {
 func (s *APIServer) SetupAdvertismentAPI(mux *http.ServeMux) {
 	mux.HandleFunc("/api/advertisments", makeHTTPHandleFunc(s.handleAdvertisments))
 }
+
+func SetupStripeRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/checkout", makeHTTPHandleFunc(CheckoutCreator))
+	mux.HandleFunc("/api/webhook", StripeWebhookHandler)
+}
