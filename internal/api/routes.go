@@ -25,11 +25,11 @@ type ApiError struct {
 }
 
 func (s *APIServer) SetupUserAPI(mux *http.ServeMux) {
-	mux.HandleFunc("/api/auth/login", makeHTTPHandleFunc(s.HandleLogin))
-	mux.HandleFunc("/api/auth/register", makeHTTPHandleFunc(s.HandleRegister))
-	mux.HandleFunc("/api/iam", makeHTTPHandleFunc(ProtectedRequest(s.Iam)))
+	mux.HandleFunc("/api/auth/login", s.makeHTTPHandleFunc(s.HandleLogin))
+	mux.HandleFunc("/api/auth/register", s.makeHTTPHandleFunc(s.HandleRegister))
+	mux.HandleFunc("/api/iam", s.makeHTTPHandleFunc(ProtectedRequest(s.Iam)))
 }
 
 func (s *APIServer) SetupAdvertismentAPI(mux *http.ServeMux) {
-	mux.HandleFunc("/api/advertisments", makeHTTPHandleFunc(s.handleAdvertisments))
+	mux.HandleFunc("/api/advertisments", s.makeHTTPHandleFunc(s.handleAdvertisments))
 }
