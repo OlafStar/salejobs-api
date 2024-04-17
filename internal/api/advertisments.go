@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -21,61 +22,63 @@ func (s *APIServer) handleAdvertisments(w http.ResponseWriter, r *http.Request) 
 
 func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) error {
 	defaultParams := types.GetAdvertismentBody{
-			Page:  1,
-			Limit: 10,
+		Page:  1,
+		Limit: 10,
 	}
 
 	var params types.GetAdvertismentBody
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil && err != io.EOF {
-			params = defaultParams
+		params = defaultParams
 	}
 
 	if params.Page < 1 {
-			params.Page = defaultParams.Page
+		params.Page = defaultParams.Page
 	}
 	if params.Limit < 1 || params.Limit > 100 {
-			params.Limit = defaultParams.Limit
+		params.Limit = defaultParams.Limit
 	}
 
-	advCache, ok := s.cache.read(CacheIDAdv)
+	cacheID := CacheID(fmt.Sprintf(string(CacheIDAdvBase), params.Page, params.Limit))
+
+	advCache, ok := s.cache.read(cacheID)
 	advCounterBytes, okCounter := s.cache.read(CacheIDAdvc)
 	var totalAds int64
 	if !okCounter {
-			totalAds, err = s.store.CountAdvertisements()
-			if err != nil {
-					return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch total advertisement count"}
-			}
-			s.cache.update(CacheIDAdvc, totalAds) 
+		totalAds, err = s.store.CountAdvertisements()
+		if err != nil {
+			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch total advertisement count"}
+		}
+		s.cache.update(CacheIDAdvc, totalAds)
 	} else {
-			err = json.Unmarshal(advCounterBytes, &totalAds)
-			if err != nil {
-					return err
-			}
+		err = json.Unmarshal(advCounterBytes, &totalAds)
+		if err != nil {
+			return err
+		}
 	}
 
 	var adv []types.CreateAdvertisementResponse
 	if !ok {
-			advertisements, err := s.store.QueryAdvertisements(params.Page, params.Limit)
-			if err != nil {
-					return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
-			}
-			s.cache.update(CacheIDAdv, advertisements)
-			adv = advertisements
+		advertisements, err := s.store.QueryAdvertisements(params.Page, params.Limit)
+		if err != nil {
+			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
+		}
+		s.cache.update(cacheID, advertisements)
+		adv = advertisements
 	} else {
-			err = json.Unmarshal(advCache, &adv)
-			if err != nil {
-					return err
-			}
+		err = json.Unmarshal(advCache, &adv)
+		if err != nil {
+			return err
+		}
 	}
 
 	lastPage := (totalAds + int64(params.Limit) - 1) / int64(params.Limit)
 
 	response := types.GetAdvertismentResponse{
-			CurrentPage: int64(params.Page),
-			Total:       totalAds,
-			Last:        lastPage,
-			Advertisments: adv,
+		CurrentPage:    int64(params.Page),
+		Total:          totalAds,
+		Last:           lastPage,
+		Advertisments: adv,
 	}
 
 	return WriteJSON(w, http.StatusOK, response)
@@ -100,7 +103,7 @@ func (s *APIServer) createAdvertisements(w http.ResponseWriter, r *http.Request)
 		return err
 	}
 
-	s.cache.clear(CacheIDAdv)
+	s.cache.clearByPattern("adv_page_")
 	s.cache.clear(CacheIDAdvc)
 
 	return WriteJSON(w, http.StatusOK, body)

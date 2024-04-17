@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -10,8 +11,8 @@ import (
 type CacheID string
 
 const (
-	CacheIDAdv        CacheID = "adv"
-	CacheIDAdvc     CacheID = "advC"
+	CacheIDAdvBase CacheID = "adv_page_%d_limit_%d" 
+	CacheIDAdvc    CacheID = "advC"
 )
 
 type allCache struct {
@@ -54,4 +55,13 @@ func (c *allCache) update(id CacheID, item any) {
 
 func (c *allCache) clear(id CacheID) {
 	c.cache.Delete(string(id))
+}
+
+func (c *allCache) clearByPattern(pattern string) {
+	items := c.cache.Items()
+	for key := range items {
+		if strings.Contains(key, pattern) {
+			c.cache.Delete(key)
+		}
+	}
 }
