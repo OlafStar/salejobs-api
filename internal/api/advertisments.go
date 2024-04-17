@@ -38,23 +38,44 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 			params.Limit = defaultParams.Limit
 	}
 
-	totalAds, err := s.store.CountAdvertisements()
-	if err != nil {
-			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch total advertisement count"}
+	advCache, ok := s.cache.read(CacheIDAdv)
+	advCounterBytes, okCounter := s.cache.read(CacheIDAdvc)
+	var totalAds int64
+	if !okCounter {
+			totalAds, err = s.store.CountAdvertisements()
+			if err != nil {
+					return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch total advertisement count"}
+			}
+			s.cache.update(CacheIDAdvc, totalAds) 
+	} else {
+			err = json.Unmarshal(advCounterBytes, &totalAds)
+			if err != nil {
+					return err
+			}
 	}
 
-	advertisements, err := s.store.QueryAdvertisements(params.Page, params.Limit)
-	if err != nil {
-			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
+	var adv []types.CreateAdvertisementResponse
+	if !ok {
+			advertisements, err := s.store.QueryAdvertisements(params.Page, params.Limit)
+			if err != nil {
+					return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
+			}
+			s.cache.update(CacheIDAdv, advertisements)
+			adv = advertisements
+	} else {
+			err = json.Unmarshal(advCache, &adv)
+			if err != nil {
+					return err
+			}
 	}
 
-	lastPage := (totalAds + int64(params.Limit) - 1) / int64(params.Limit) // Calculating the number of the last page
+	lastPage := (totalAds + int64(params.Limit) - 1) / int64(params.Limit)
 
 	response := types.GetAdvertismentResponse{
 			CurrentPage: int64(params.Page),
 			Total:       totalAds,
 			Last:        lastPage,
-			Advertisments: advertisements,
+			Advertisments: adv,
 	}
 
 	return WriteJSON(w, http.StatusOK, response)
@@ -78,6 +99,9 @@ func (s *APIServer) createAdvertisements(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		return err
 	}
+
+	s.cache.clear(CacheIDAdv)
+	s.cache.clear(CacheIDAdvc)
 
 	return WriteJSON(w, http.StatusOK, body)
 }
