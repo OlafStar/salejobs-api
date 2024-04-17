@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"compress/gzip"
 	"log"
 	"net/http"
-	"golang.org/x/time/rate"
+	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
@@ -14,6 +17,15 @@ type CORSConfig struct {
 	AllowedMethods []string 
 	AllowedHeaders []string  
 	AllowCredentials bool    
+}
+
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	Writer *gzip.Writer
+}
+
+func (gzw gzipResponseWriter) Write(data []byte) (int, error) {
+	return gzw.Writer.Write(data)
 }
 
 func Logging() Middleware {
@@ -81,7 +93,36 @@ func CORS(config CORSConfig) Middleware {
 	}
 }
 
-// Helper function to concatenate slice of strings with a delimiter
+//This middlewate will increese runtime but reduce bandwidth (tested on advertisments endpoint)
+//Requests/sec: 110000 -> 8000
+//Bandwidth: 5.69GB -> 3.97GB
+func GzipMiddleware() Middleware {
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+				f(w, r)
+				return
+			}
+
+			gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+			if err != nil {
+				http.Error(w, "Could not create gzip writer", http.StatusInternalServerError)
+				return
+			}
+			defer gz.Close()
+
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Vary", "Accept-Encoding")
+
+			gzw := gzipResponseWriter{ResponseWriter: w, Writer: gz}
+
+			f(gzw, r)
+
+			gz.Flush()
+		}
+	}
+}
+
 func stringJoin(items []string, delim string) string {
 	if len(items) == 0 {
 		return ""
