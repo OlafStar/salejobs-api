@@ -3,6 +3,7 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"golang.org/x/time/rate"
 	"time"
 )
 
@@ -31,6 +32,19 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
         f = m(f)
     }
     return f
+}
+
+func RateLimit(r rate.Limit, b int) Middleware {
+	limiter := rate.NewLimiter(r, b)
+	return func(f http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !limiter.Allow() {
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
+			f(w, r)
+		}
+	}
 }
 
 func CORS(config CORSConfig) Middleware {
