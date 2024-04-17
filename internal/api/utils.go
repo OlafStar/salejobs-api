@@ -57,7 +57,6 @@ func (s *APIServer) makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 
 		err := <-errc
 		if err != nil {
-			fmt.Println("Handling error from job")
 			fmt.Println(err)
 			var httpErr *HTTPError
 			if errors.As(err, &httpErr) {

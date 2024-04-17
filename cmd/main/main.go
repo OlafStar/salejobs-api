@@ -8,7 +8,8 @@ import (
 func main(){
 	db := api.InitDatabase()
 	rqm := api.NewRequestQueueManager(10, 10)
+	c := api.NewCache()
 	defer rqm.Shutdown()
-	server := api.NewAPIServer(":4200", db, rqm)
+	server := api.NewAPIServer(":4200", db, rqm, c)
 	server.Run()
 }

@@ -201,7 +201,6 @@ func (s *Store) GetJWTUser(username string) (string, error) {
 func (s *Store) CreateAdvertisement(ad types.CreateAdvertisementBody) error {
 	newUUID, err := uuid.NewUUID()
 	if err != nil {
-			log.Println("Failed to generate UUID:", err)
 			return err
 	}
 
@@ -214,7 +213,6 @@ func (s *Store) CreateAdvertisement(ad types.CreateAdvertisementBody) error {
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`)
 	if err != nil {
-			log.Println("Failed to prepare advertisement insertion:", err)
 			return err
 	}
 	defer stmt.Close()
@@ -227,7 +225,6 @@ func (s *Store) CreateAdvertisement(ad types.CreateAdvertisementBody) error {
 			ad.Consent, ad.Contact.Name, ad.Contact.Email, ad.Contact.Phone,
 	)
 	if err != nil {
-			log.Println("Failed to execute advertisement insertion:", err)
 			return err
 	}
 
@@ -235,7 +232,6 @@ func (s *Store) CreateAdvertisement(ad types.CreateAdvertisementBody) error {
 			INSERT INTO salary_ranges (advertisement_id, employment_type, min_salary, max_salary, currency) VALUES (?, ?, ?, ?, ?);
 	`)
 	if err != nil {
-			log.Println("Failed to prepare salary range insertion:", err)
 			return err
 	}
 	defer salaryStmt.Close()
@@ -243,7 +239,6 @@ func (s *Store) CreateAdvertisement(ad types.CreateAdvertisementBody) error {
 	for _, salaryRange := range ad.Salary {
 			_, err = salaryStmt.Exec(newUUID, salaryRange.EmploymentType,salaryRange.MinSalary, salaryRange.MaxSalary, salaryRange.Currency)
 			if err != nil {
-					log.Println("Failed to execute salary range insertion:", err)
 					return err
 			}
 	}
