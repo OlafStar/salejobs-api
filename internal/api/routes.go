@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+
+	"github.com/olafstar/salejobs-api/internal/env"
 )
 
 type apiFunc func(http.ResponseWriter, *http.Request) error
@@ -32,4 +34,25 @@ func (s *APIServer) SetupUserAPI(mux *http.ServeMux) {
 
 func (s *APIServer) SetupAdvertismentAPI(mux *http.ServeMux) {
 	mux.HandleFunc("/api/advertisments", s.makeHTTPHandleFunc(s.handleAdvertisments))
+}
+
+//TODO: Delete this before prod
+func (s *APIServer) SetupUtilsRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/api/test", s.makeHTTPHandleFunc(func(w http.ResponseWriter, r *http.Request) error {
+			if r.Method == "POST" {
+					fileData, fileName, err := ReadFileFromRequest(r)
+
+					if err != nil {
+						return err
+					}
+
+					if err := s.s3.UploadData(fileData, env.GoEnv("R2_BUCKET_NAME"), fileName); err != nil {
+							return err
+					}
+
+					return WriteJSON(w, http.StatusOK, "File uploaded successfully")
+			}
+
+			return &HTTPError{StatusCode: http.StatusMethodNotAllowed, Message: "Method not allowed"}
+	}))
 }

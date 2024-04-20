@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/olafstar/salejobs-api/internal/middleware"
@@ -46,4 +47,23 @@ func (s *APIServer) makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 			}
 		}
 	}, middleware.Logging(), middleware.CORS(corsConfig))
+}
+
+func ReadFileFromRequest(r *http.Request) ([]byte, string, error) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		return nil, "", &HTTPError{StatusCode: http.StatusBadRequest, Message: "Error parsing multipart form"}
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return nil, "", &HTTPError{StatusCode: http.StatusBadRequest, Message: "Invalid file"}
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, "", &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Error reading file"}
+	}
+
+	return fileData, header.Filename, nil
 }
