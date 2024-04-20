@@ -12,6 +12,10 @@ type User struct {
 
 //Advertisment types
 
+type AdvertismentCounterResponse struct {
+	Total int64 `json:"total"`
+}
+
 type Company struct {
 	Name    string `json:"name"`
 	Size    int64  `json:"size"`

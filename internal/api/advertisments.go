@@ -20,6 +20,38 @@ func (s *APIServer) handleAdvertisments(w http.ResponseWriter, r *http.Request) 
 	return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Method not allowed"}
 }
 
+func (s *APIServer) handleAdvertismentsCounter(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		return s.countAdvertisements(w)
+	}
+
+	return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Method not allowed"}
+}
+
+func (s *APIServer) countAdvertisements(w http.ResponseWriter) error {
+	advCounterBytes, okCounter := s.cache.read(CacheIDAdvc)
+
+	var totalAds int64
+	var err error
+	if !okCounter {
+		totalAds, err = s.store.CountAdvertisements()
+		if err != nil {
+			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch total advertisement count"}
+		}
+		s.cache.update(CacheIDAdvc, totalAds)
+	} else {
+		err := json.Unmarshal(advCounterBytes, &totalAds)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return WriteJSON(w, http.StatusOK, &types.AdvertismentCounterResponse{
+		Total: totalAds,
+	})
+}
+
 func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) error {
 	defaultParams := types.GetAdvertismentBody{
 		Page:  1,

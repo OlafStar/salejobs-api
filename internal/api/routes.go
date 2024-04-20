@@ -34,6 +34,7 @@ func (s *APIServer) SetupUserAPI(mux *http.ServeMux) {
 
 func (s *APIServer) SetupAdvertismentAPI(mux *http.ServeMux) {
 	mux.HandleFunc("/api/advertisments", s.makeHTTPHandleFunc(s.handleAdvertisments))
+	mux.HandleFunc("/api/advertisments/counter", s.makeHTTPHandleFunc(s.handleAdvertismentsCounter))
 }
 
 //TODO: Delete this before prod
