@@ -87,5 +87,5 @@ type GetAdvertismentResponse struct {
 	CurrentPage int64 `json:"currentPage"`
 	Total int64 `json:"total"`
 	Last int64 `json:"last"`
-	Advertisments []CreateAdvertisementResponse `json:"advertisments"`
+	Advertisements []CreateAdvertisementResponse `json:"advertisements"`
 }

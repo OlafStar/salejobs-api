@@ -93,7 +93,7 @@ func CORS(config CORSConfig) Middleware {
 	}
 }
 
-//This middlewate will increese runtime but reduce bandwidth (tested on advertisments endpoint)
+//This middlewate will increese runtime but reduce bandwidth (tested on advertisements endpoint)
 //Requests/sec: 110000 -> 8000
 //Bandwidth: 5.69GB -> 3.97GB
 func GzipMiddleware() Middleware {

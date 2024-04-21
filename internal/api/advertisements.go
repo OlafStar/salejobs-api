@@ -3,13 +3,13 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/olafstar/salejobs-api/internal/types"
 )
 
-func (s *APIServer) handleAdvertisments(w http.ResponseWriter, r *http.Request) error {
+func (s *APIServer) handleAdvertisements(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		return s.getAdvertisements(w, r)
 	}
@@ -20,7 +20,7 @@ func (s *APIServer) handleAdvertisments(w http.ResponseWriter, r *http.Request) 
 	return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Method not allowed"}
 }
 
-func (s *APIServer) handleAdvertismentsCounter(w http.ResponseWriter, r *http.Request) error {
+func (s *APIServer) handleAdvertisementsCounter(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		return s.countAdvertisements(w)
 	}
@@ -58,11 +58,42 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 		Limit: 10,
 	}
 
-	var params types.GetAdvertismentBody
-	err := json.NewDecoder(r.Body).Decode(&params)
-	if err != nil && err != io.EOF {
+	var params types.GetAdvertismentBody = defaultParams
+	var err error
+
+	page := r.URL.Query().Get("page")
+	limit := r.URL.Query().Get("limit")
+
+	if page == "" && limit == "" {
 		params = defaultParams
 	}
+
+	if page != "" {
+		pageInt, err := strconv.ParseInt(page, 10, 64)
+	
+		if err != nil {
+			return err
+		}
+
+		params = types.GetAdvertismentBody{
+			Page: pageInt,
+			Limit: params.Limit,
+		}
+	}
+
+	if limit != "" {
+		limitInt, err := strconv.ParseInt(limit, 10, 64)
+	
+		if err != nil {
+			return err
+		}
+
+		params = types.GetAdvertismentBody{
+			Page: params.Page,
+			Limit: limitInt,
+		}
+	}
+
 
 	if params.Page < 1 {
 		params.Page = defaultParams.Page
@@ -110,7 +141,7 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 		CurrentPage:    int64(params.Page),
 		Total:          totalAds,
 		Last:           lastPage,
-		Advertisments: adv,
+		Advertisements: adv,
 	}
 
 	return WriteJSON(w, http.StatusOK, response)
