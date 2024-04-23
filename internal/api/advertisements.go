@@ -9,6 +9,14 @@ import (
 	"github.com/olafstar/salejobs-api/internal/types"
 )
 
+func (s *APIServer) handleSpecificAdvertisement(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		return s.getSpecificAdvertisement(w, r)
+	}
+
+	return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Method not allowed"}
+}
+
 func (s *APIServer) handleAdvertisements(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		return s.getAdvertisements(w, r)
@@ -52,13 +60,39 @@ func (s *APIServer) countAdvertisements(w http.ResponseWriter) error {
 	})
 }
 
+func (s *APIServer) getSpecificAdvertisement(w http.ResponseWriter, r *http.Request) error {
+	id := r.PathValue("id")
+
+	cacheID := CacheID(fmt.Sprintf(string(CacheIDAdv), id))
+	advCache, ok := s.cache.read(cacheID)
+
+	var adv *types.CreateAdvertisementResponse
+	var err error
+	if !ok {
+		advertisement, err := s.store.QueryAdvertisement(id)
+		if err != nil {
+			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
+		}
+		s.cache.update(cacheID, advertisement)
+		adv = advertisement
+	} else {
+		err = json.Unmarshal(advCache, &adv)
+		if err != nil {
+			return err
+		}
+	}
+
+
+	return WriteJSON(w, http.StatusOK, adv) 
+}
+
 func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) error {
-	defaultParams := types.GetAdvertismentBody{
+	defaultParams := types.GetAdvertismentsBody{
 		Page:  1,
 		Limit: 10,
 	}
 
-	var params types.GetAdvertismentBody = defaultParams
+	var params types.GetAdvertismentsBody = defaultParams
 	var err error
 
 	page := r.URL.Query().Get("page")
@@ -75,7 +109,7 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 			return err
 		}
 
-		params = types.GetAdvertismentBody{
+		params = types.GetAdvertismentsBody{
 			Page: pageInt,
 			Limit: params.Limit,
 		}
@@ -88,7 +122,7 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 			return err
 		}
 
-		params = types.GetAdvertismentBody{
+		params = types.GetAdvertismentsBody{
 			Page: params.Page,
 			Limit: limitInt,
 		}
@@ -120,9 +154,9 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
-	var adv []types.CreateAdvertisementResponse
+	var adv []types.AdvertisementsCard
 	if !ok {
-		advertisements, err := s.store.QueryAdvertisements(params.Page, params.Limit)
+		advertisements, err := s.store.QueryAdvertisementsCards(params.Page, params.Limit)
 		if err != nil {
 			return &HTTPError{StatusCode: http.StatusInternalServerError, Message: "Failed to fetch advertisements"}
 		}
@@ -137,7 +171,11 @@ func (s *APIServer) getAdvertisements(w http.ResponseWriter, r *http.Request) er
 
 	lastPage := (totalAds + int64(params.Limit) - 1) / int64(params.Limit)
 
-	response := types.GetAdvertismentResponse{
+	if adv == nil {
+		adv = []types.AdvertisementsCard{}
+	}
+
+	response := types.GetAdvertismentsResponse{
 		CurrentPage:    int64(params.Page),
 		Total:          totalAds,
 		Last:           lastPage,

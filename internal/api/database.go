@@ -106,16 +106,81 @@ func (s *Store) CountAdvertisements() (int64, error) {
 	return count, nil
 }
 
-func (s *Store) QueryAdvertisements(page, limit int64) ([]types.CreateAdvertisementResponse, error) {
+func (s *Store) QueryAdvertisement(id string) (*types.CreateAdvertisementResponse, error) {
+	query := `
+SELECT id, company_name, company_size, company_website, company_logo, title, experience, skill, description,
+			location_country, location_city, location_address, operating_mode, type_of_work, apply_email, apply_url,
+			consent, contact_name, contact_email, contact_phone, created_at
+FROM advertisements
+WHERE id = ?
+`
+	stmt, err := s.db.Prepare(query)
+	if err != nil {
+			log.Printf("Error preparing query: %s", err)
+			return nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(id)
+	var ad types.CreateAdvertisementResponse
+	err = row.Scan(
+			&ad.Id, &ad.Company.Name, &ad.Company.Size, &ad.Company.Website, &ad.Company.Logo,
+			&ad.Title, &ad.Experience, &ad.Skill, &ad.Description,
+			&ad.Location.Country, &ad.Location.City, &ad.Location.Address,
+			&ad.OperatingMode, &ad.TypeOfWork, &ad.ApplyType.Email, &ad.ApplyType.Url,
+			&ad.Consent, &ad.Contact.Name, &ad.Contact.Email, &ad.Contact.Phone, &ad.CreatedAt,
+	)
+	if err != nil {
+			log.Printf("Error scanning row: %s", err)
+			return nil, err
+	}
+
+	// Fetch salary ranges for the specific advertisement
+	salaryQuery := `
+SELECT employment_type, CAST(min_salary AS SIGNED), CAST(max_salary AS SIGNED), currency
+FROM salary_ranges
+WHERE advertisement_id = ?
+`
+	salaryStmt, err := s.db.Prepare(salaryQuery)
+	if err != nil {
+			log.Printf("Error preparing salary query: %s", err)
+			return nil, err
+	}
+	defer salaryStmt.Close()
+
+	salaryRows, err := salaryStmt.Query(ad.Id)
+	if err != nil {
+			log.Printf("Error executing salary query: %s", err)
+			return nil, err
+	}
+
+	for salaryRows.Next() {
+			var salary types.SalaryRange
+			if err := salaryRows.Scan(&salary.EmploymentType, &salary.MinSalary, &salary.MaxSalary, &salary.Currency); err != nil {
+					log.Printf("Error scanning salary row: %s", err)
+					return nil, err
+			}
+			ad.Salary = append(ad.Salary, salary)
+	}
+	salaryRows.Close()
+
+	if err := row.Err(); err != nil {
+			log.Printf("Error during row iteration: %s", err)
+			return nil, err
+	}
+
+	return &ad, nil
+}
+
+func (s *Store) QueryAdvertisementsCards(page, limit int64) ([]types.AdvertisementsCard, error) {
 	offset := (page - 1) * limit
 	if offset < 0 {
 			offset = 0
 	}
 
 	query := `
-SELECT id, company_name, company_size, company_website, company_logo, title, experience, skill, description,
-		 location_country, location_city, location_address, operating_mode, type_of_work, apply_email, apply_url,
-		 consent, contact_name, contact_email, contact_phone
+SELECT id, company_name, company_size, company_website, company_logo, title,
+		 location_country, location_city, location_address, created_at
 FROM advertisements
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -134,15 +199,12 @@ LIMIT ? OFFSET ?
 	}
 	defer rows.Close()
 
-	var ads []types.CreateAdvertisementResponse
+	var ads []types.AdvertisementsCard
 	for rows.Next() {
-			var ad types.CreateAdvertisementResponse
+			var ad types.AdvertisementsCard
 			err := rows.Scan(
 					&ad.Id, &ad.Company.Name, &ad.Company.Size, &ad.Company.Website, &ad.Company.Logo,
-					&ad.Title, &ad.Experience, &ad.Skill, &ad.Description,
-					&ad.Location.Country, &ad.Location.City, &ad.Location.Address,
-					&ad.OperatingMode, &ad.TypeOfWork, &ad.ApplyType.Email, &ad.ApplyType.Url,
-					&ad.Consent, &ad.Contact.Name, &ad.Contact.Email, &ad.Contact.Phone,
+					&ad.Title, &ad.Location.Country, &ad.Location.City, &ad.Location.Address, &ad.CreatedAt,
 			)
 			if err != nil {
 					log.Printf("Error scanning row: %s", err)

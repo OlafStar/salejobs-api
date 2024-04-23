@@ -76,11 +76,7 @@ type CreateAdvertisementResponse struct {
 	ApplyType     ApplyTypeEnum  `json:"applyType"`
 	Consent       bool           `json:"consent"`
 	Contact       ContactDetails `json:"contact"`
-}
-
-type GetAdvertismentBody struct {
-	Page int64 `json:"page"`
-	Limit int64 `json:"limit"`
+	CreatedAt     string         `json:"createdAt"`
 }
 
 type GetAdvertismentResponse struct {
@@ -88,4 +84,25 @@ type GetAdvertismentResponse struct {
 	Total int64 `json:"total"`
 	Last int64 `json:"last"`
 	Advertisements []CreateAdvertisementResponse `json:"advertisements"`
+}
+
+type AdvertisementsCard struct {
+	Id            string         `json:"id"`
+	Company       Company        `json:"company"`
+	Title         string         `json:"title"`
+	Salary        []SalaryRange  `json:"salary"`
+	Location      Location       `json:"location"`
+	CreatedAt     string         `json:"createdAt"`
+}
+
+type GetAdvertismentsBody struct {
+	Page int64 `json:"page"`
+	Limit int64 `json:"limit"`
+}
+
+type GetAdvertismentsResponse struct {
+	CurrentPage int64 `json:"currentPage"`
+	Total int64 `json:"total"`
+	Last int64 `json:"last"`
+	Advertisements []AdvertisementsCard `json:"advertisements"`
 }

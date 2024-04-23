@@ -13,6 +13,7 @@ type CacheID string
 const (
 	CacheIDAdvBase CacheID = "adv_page_%d_limit_%d" 
 	CacheIDAdvc    CacheID = "advC"
+	CacheIDAdv CacheID = "adv_id_%s" 
 )
 
 type allCache struct {
